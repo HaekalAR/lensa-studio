@@ -16,8 +16,8 @@ Sudah diverifikasi:
 - Buat sesi dan QR dari dashboard production berhasil.
 - QR berisi URL `https://lensa-studio-six.vercel.app/s/...`.
 - D1 remote sudah dimigrasikan.
-- R2 binding aktif.
-- D1 production bersih (0 sesi, 0 foto).
+- R2 binding aktif; upload 1 foto production berhasil dan thumbnail `200`.
+- Data uji production sudah dihapus; D1 bersih (0 sesi, 0 foto).
 - E2E lokal 31/31, live 8/8, visual tanpa error.
 
 ## Login admin
