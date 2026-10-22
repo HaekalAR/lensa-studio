@@ -21,3 +21,4 @@ worker/.wrangler/
 .wrangler-config/
 .wrangler-tmp/
 worker/.dev.vars
+.deploy-secrets*
