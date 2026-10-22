@@ -720,15 +720,11 @@ app.post('/api/ingest/prepare', async (c) => {
   const width = Math.min(100_000, Math.max(0, toInt(body.width)));
   const height = Math.min(100_000, Math.max(0, toInt(body.height)));
   const sizeBytes = Math.min(100 * 1024 * 1024, Math.max(0, toInt(body.sizeBytes)));
+  // Tanggal kamera tidak dipakai untuk menerima/menolak foto. Sesi yang
+  // menentukan; capturedAt hanya metadata dan fallback ke waktu upload.
   const capturedAt = body.capturedAt && !Number.isNaN(new Date(body.capturedAt).getTime())
     ? new Date(body.capturedAt)
     : new Date();
-  if (capturedAt.getTime() < new Date(session.startedAt).getTime() - 15 * 60 * 1000) {
-    return c.json(
-      { error: 'photo_before_session', message: 'Waktu foto lebih lama dari sesi aktif.' },
-      422,
-    );
-  }
 
   const existing = await getPhotoByHash(c, session.id, sha256);
   if (existing) {

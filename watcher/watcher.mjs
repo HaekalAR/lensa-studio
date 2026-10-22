@@ -308,7 +308,6 @@ async function uploadPhoto(filePath, stat, session) {
   const filename = path.basename(filePath);
   const buffer = await fsp.readFile(filePath);
   const processed = await processImage(buffer, filename);
-  const capturedAt = new Date(stat.mtimeMs).toISOString();
 
   const prepare = await request('/api/ingest/prepare', {
     method: 'POST',
@@ -320,7 +319,6 @@ async function uploadPhoto(filePath, stat, session) {
       sizeBytes: processed.sizeBytes,
       width: processed.width,
       height: processed.height,
-      capturedAt,
     }),
     timeoutMs: 30_000,
   });
