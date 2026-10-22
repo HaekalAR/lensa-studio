@@ -417,7 +417,10 @@ async function scan() {
     }
 
     const sessionStart = new Date(activeSession.startedAt).getTime();
-    if (stat.mtimeMs < sessionStart - 2 * 60 * 1000) {
+    // Foto dari kamera/editor bisa membawa mtime lama. Gunakan juga waktu
+    // pembuatan/ubah file agar file yang baru disalin ke folder tetap masuk.
+    const fileArrival = Math.max(stat.mtimeMs || 0, stat.birthtimeMs || 0, stat.ctimeMs || 0);
+    if (fileArrival < sessionStart - 2 * 60 * 1000) {
       markHandled(activeSession.id, filePath, stat, 'skipped', { reason: 'before_session' });
       pending.delete(filePath);
       continue;

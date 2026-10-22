@@ -142,7 +142,7 @@ Perilaku:
 - Hanya `.jpg`, `.jpeg`, `.jfif`.
 - Menunggu file stabil 2 detik.
 - Hanya upload saat ada sesi aktif.
-- Melewati file lebih lama dari 2 menit sebelum sesi dimulai.
+- Melewati file yang sudah ada di folder sebelum sesi dimulai; file yang baru disalin setelah sesi tetap diunggah meskipun timestamp kameranya lama.
 - State disimpan di `watcher/.state.json`.
 - Server memakai SHA-256 untuk deduplikasi per sesi.
 - Heartbeat tiap 10 detik; dashboard menampilkan uploader online/offline.
@@ -389,7 +389,7 @@ Ubah `PUBLIC_APP_URL` di `worker/wrangler.toml` ke URL Vercel, lalu deploy ulang
 Cek `watcher/config.json`, token, folder, dan `npm install` (Sharp). Jalankan `npm run watcher` untuk melihat log.
 
 **Foto tidak masuk**  
-Pastikan sesi aktif, file JPEG, ukuran stabil, dan waktu file tidak lebih lama dari sesi.
+Pastikan sesi aktif, file JPEG, ukuran stabil, dan foto dimasukkan setelah sesi dibuat.
 
 ---
 
