@@ -11,7 +11,7 @@ https://lensa-api.zaychik2006lya.workers.dev
 Sudah selesai:
 
 - Worker `lensa-api` deployed.
-- D1 `lensa-db` remote sudah dimigrasikan (31 tabel/query awal, schema ada).
+- D1 `lensa-db` remote sudah dimigrasikan (schema awal, 5 tabel).
 - R2 `expo-booth-ril` terpasang sebagai binding `PHOTOS`.
 - 3 secret Worker sudah di-set.
 - Login admin production sudah diuji berhasil.
