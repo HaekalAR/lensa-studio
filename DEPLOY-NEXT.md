@@ -26,29 +26,26 @@ Password ada di file lokal `.deploy-secrets.local`, baris `ADMIN_PASSWORD`.
 
 Jangan commit atau kirim file itu.
 
-## Yang tersisa: uploader laptop
+## Uploader
 
-Salin `watcher/config.example.json` menjadi `watcher/config.json`:
+Sudah berjalan dan online:
 
-```json
-{
-  "serverUrl": "https://lensa-api.zaychik2006lya.workers.dev",
-  "ingestToken": "INGEST_TOKEN_DARI_DEPLOY_SECRETS",
-  "watchDir": "C:\\Users\\NamaKamu\\Pictures\\Tethering",
-  "agentName": "Laptop Studio",
-  "stabilitySeconds": 2
-}
-```
+- Folder: `F:\!EXPOSURE BOOTH\Gallery`
+- Server: `https://lensa-api.zaychik2006lya.workers.dev`
+- Agen: `Exposure Booth`
+- Upload 1 foto production sudah diuji; thumbnail `200`.
+- Data uji sudah dihapus.
 
-`INGEST_TOKEN` ada di `.deploy-secrets.local`.
+Saat ini folder kosong dan belum ada sesi aktif, jadi uploader standby.
 
-Jalankan:
+## Yang belum dilakukan
 
-```bash
-npm run watcher
-```
-
-atau `start-watcher.cmd`.
+1. **Buat sesi pertama** dari dashboard, lalu masukkan foto asli ke folder.
+2. **Auto-start uploader saat Windows menyala** belum dibuat; sekarang masih manual `npm run watcher` atau `start-watcher.cmd`.
+3. **Folder F: harus tetap terhubung**; kalau drive dilepas, uploader tidak bisa membaca foto.
+4. **Custom domain** untuk Vercel/Worker belum dipakai; masih memakai `vercel.app` dan `workers.dev`.
+5. **Backup/retensi R2** belum diatur; foto tersimpan sampai dihapus manual.
+6. **Push commit terbaru ke GitHub** kalau ingin source di GitHub sama dengan konfigurasi production saat ini.
 
 ## Cara pakai
 
