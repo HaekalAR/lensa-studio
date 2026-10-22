@@ -142,7 +142,8 @@ Perilaku:
 - Hanya `.jpg`, `.jpeg`, `.jfif`.
 - Menunggu file stabil 2 detik.
 - Hanya upload saat ada sesi aktif.
-- Melewati file yang sudah ada di folder sebelum sesi dimulai; file yang baru disalin setelah sesi tetap diunggah meskipun timestamp kameranya lama.
+- Tanggal file tidak dipakai untuk memilih foto; file baru yang belum pernah diunggah akan diproses saat ada sesi aktif.
+- Duplikat dicegah lewat state file yang sudah pernah diunggah, bukan lewat tanggal kamera.
 - State disimpan di `watcher/.state.json`.
 - Server memakai SHA-256 untuk deduplikasi per sesi.
 - Heartbeat tiap 10 detik; dashboard menampilkan uploader online/offline.

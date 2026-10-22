@@ -96,6 +96,30 @@ async function loadState() {
 let state = await loadState();
 let saveTimer = null;
 
+function uploadKey(filePath, size, mtimeMs) {
+  return `${filePath}|${size}|${Math.round(mtimeMs)}`;
+}
+
+function rebuildUploadedIndex() {
+  if (!state.uploaded || typeof state.uploaded !== 'object') state.uploaded = {};
+  for (const [key, entry] of Object.entries(state.files || {})) {
+    if (entry?.status !== 'uploaded') continue;
+    if (entry.filePath && entry.size != null && entry.mtimeMs != null) {
+      state.uploaded[uploadKey(entry.filePath, entry.size, entry.mtimeMs)] = true;
+      continue;
+    }
+    const first = key.indexOf('|');
+    if (first < 0) continue;
+    const rest = key.slice(first + 1);
+    const last = rest.lastIndexOf('|');
+    const previous = last < 0 ? -1 : rest.lastIndexOf('|', last - 1);
+    if (previous < 0) continue;
+    state.uploaded[uploadKey(rest.slice(0, previous), rest.slice(previous + 1, last), rest.slice(last + 1))] = true;
+  }
+}
+
+rebuildUploadedIndex();
+
 function scheduleStateSave() {
   if (saveTimer) return;
   saveTimer = setTimeout(async () => {
@@ -123,13 +147,25 @@ function alreadyHandled(sessionId, filePath, stat) {
   return Boolean(state.files[stateKey(sessionId, filePath, stat)]);
 }
 
+function uploadedBefore(filePath, stat) {
+  return Boolean(state.uploaded?.[uploadKey(filePath, stat.size, stat.mtimeMs)]);
+}
+
 function markHandled(sessionId, filePath, stat, status, extra = {}) {
-  state.files[stateKey(sessionId, filePath, stat)] = {
+  const entry = {
     status,
     at: new Date().toISOString(),
     name: path.basename(filePath),
+    filePath,
+    size: stat.size,
+    mtimeMs: Math.round(stat.mtimeMs),
     ...extra,
   };
+  state.files[stateKey(sessionId, filePath, stat)] = entry;
+  if (status === 'uploaded') {
+    if (!state.uploaded || typeof state.uploaded !== 'object') state.uploaded = {};
+    state.uploaded[uploadKey(filePath, stat.size, stat.mtimeMs)] = true;
+  }
   scheduleStateSave();
 }
 
@@ -416,12 +452,10 @@ async function scan() {
       continue;
     }
 
-    const sessionStart = new Date(activeSession.startedAt).getTime();
-    // Foto dari kamera/editor bisa membawa mtime lama. Gunakan juga waktu
-    // pembuatan/ubah file agar file yang baru disalin ke folder tetap masuk.
-    const fileArrival = Math.max(stat.mtimeMs || 0, stat.birthtimeMs || 0, stat.ctimeMs || 0);
-    if (fileArrival < sessionStart - 2 * 60 * 1000) {
-      markHandled(activeSession.id, filePath, stat, 'skipped', { reason: 'before_session' });
+    // Tanggal file tidak dipakai: kamera bisa belum di-set. Cegah duplikat
+    // dengan catatan file yang sudah pernah diunggah, bukan dengan mtime.
+    if (uploadedBefore(filePath, stat)) {
+      markHandled(activeSession.id, filePath, stat, 'skipped', { reason: 'already_uploaded' });
       pending.delete(filePath);
       continue;
     }
