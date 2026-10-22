@@ -11,7 +11,7 @@ SITE_NAME = "Lensa"
 APP_TIMEZONE = "Asia/Jakarta"
 SESSION_DURATION_MINUTES = "15"
 PUBLIC_APP_URL = "https://lensa-studio.vercel.app"
-PUBLIC_API_URL = "https://lensa-api.namamu.workers.dev"
+PUBLIC_API_URL = "https://lensa-api.zaychik2006lya.workers.dev"
 FRONTEND_ORIGINS = "https://lensa-studio.vercel.app"
 R2_BUCKET_NAME = "expo-booth-ril"
 
