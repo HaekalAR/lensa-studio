@@ -1,150 +1,101 @@
 # Deploy Berikutnya — Lensa
 
-Status repo: kode, konfigurasi, build, tes lokal, dan commit git sudah selesai.
-Yang tersisa hanya langkah yang membutuhkan login/akun kamu.
+## Status
 
-Resource yang sudah tercatat di `worker/wrangler.toml`:
+Backend sudah live:
 
-- Worker: `lensa-api`
-- D1: `lensa-db` (`ceec3b04-32e4-469c-9d14-865655fa7180`)
-- R2: `expo-booth-ril`
-- Frontend: `https://lensa-studio.vercel.app`
+```text
+https://lensa-api.zaychik2006lya.workers.dev
+```
 
-Kalau nama/URL di atas berbeda dengan akunmu, ubah `worker/wrangler.toml`.
+Sudah selesai:
+
+- Worker `lensa-api` deployed.
+- D1 `lensa-db` remote sudah dimigrasikan (31 tabel/query awal, schema ada).
+- R2 `expo-booth-ril` terpasang sebagai binding `PHOTOS`.
+- 3 secret Worker sudah di-set.
+- Login admin production sudah diuji berhasil.
+- CORS ke `https://lensa-studio.vercel.app` sudah diuji.
+- E2E 31/31, live 8/8, visual tanpa error.
+- Repo lokal sudah di-commit.
+
+Password admin ada di file lokal `.deploy-secrets.local`, baris `ADMIN_PASSWORD`. File itu di-ignore git.
 
 ---
 
-## 1. Login Cloudflare
+## 1. Push repo ke GitHub
 
-```bash
-node scripts/wrangler-run.mjs login
-```
+Repo lokal sudah ada di branch `main`, tetapi belum punya remote.
 
-Browser akan terbuka. Setujui akses, lalu kembali ke terminal.
-
-Cek:
-
-```bash
-node scripts/wrangler-run.mjs whoami
-```
-
-## 2. Migrasi D1 remote
-
-```bash
-npx wrangler d1 migrations apply lensa-db --remote --config worker/wrangler.toml
-```
-
-## 3. Upload tiga secret
-
-File `.deploy-secrets.worker.env` sudah dibuat dan **di-ignore git**. Isinya:
-`ADMIN_PASSWORD_HASH`, `SESSION_SECRET`, `INGEST_TOKEN`.
-
-```bash
-npx wrangler secret bulk .deploy-secrets.worker.env --config worker/wrangler.toml
-```
-
-Setelah berhasil, hapus file itu:
-
-```bash
-rm .deploy-secrets.worker.env
-```
-
-Di PowerShell:
-
-```powershell
-Remove-Item .deploy-secrets.worker.env
-```
-
-Password admin ada di `.deploy-secrets.local` (juga di-ignore git). Jangan commit file itu.
-
-## 4. Deploy Worker
-
-```bash
-npm run worker:deploy
-```
-
-Output akan memberi URL, misalnya:
-
-```text
-https://lensa-api.<subdomain-akun>.workers.dev
-```
-
-### Setelah dapat URL Worker
-
-Ubah `worker/wrangler.toml`:
-
-```toml
-PUBLIC_API_URL = "https://lensa-api.<subdomain-akun>.workers.dev"
-```
-
-Lalu deploy ulang:
-
-```bash
-npm run worker:deploy
-```
-
-## 5. Push ke GitHub
-
-Repo lokal sudah di-commit di branch `main`. Buat repository kosong di GitHub, lalu:
+Buat repository kosong di GitHub, lalu:
 
 ```bash
 git remote add origin https://github.com/USERNAME/REPO.git
 git push -u origin main
 ```
 
-Jangan commit:
+Jangan commit file secret. Semua sudah masuk `.gitignore`.
 
-- `.env`
-- `.deploy-secrets.local`
-- `.deploy-secrets.worker.env`
-- `worker/.dev.vars`
-- `watcher/config.json`
+## 2. Vercel
 
-Semua sudah masuk `.gitignore`.
+Import repo GitHub ke Vercel.
 
-## 6. Import di Vercel
+- Root Directory: **root repo**
+- Framework: Vite
+- Build Command: `npm run build`
+- Output Directory: `dist`
 
-1. Vercel → Add New → Project → import repo GitHub.
-2. Root Directory: **root repo**.
-3. Framework: Vite.
-4. Environment Variable:
+Environment Variable:
 
 ```env
-VITE_API_BASE_URL=https://lensa-api.<subdomain-akun>.workers.dev
+VITE_API_BASE_URL=https://lensa-api.zaychik2006lya.workers.dev
 ```
 
-5. Deploy.
+Lalu deploy.
 
-Kalau URL Vercel yang jadi berbeda dari `https://lensa-studio.vercel.app`, update di `worker/wrangler.toml`:
+### Penting soal URL Vercel
+
+Saat dicek, `https://lensa-studio.vercel.app` sudah menampilkan website Lensa Studio lama.
+
+- Kalau itu project Vercel milikmu dan akan diganti dengan repo ini, URL tersebut bisa tetap dipakai.
+- Kalau bukan, Vercel akan memberi URL lain. Setelah deploy, catat URL finalnya.
+
+Jika URL final berbeda, ubah `worker/wrangler.toml`:
 
 ```toml
-PUBLIC_APP_URL = "https://<url-vercel-kamu>"
-FRONTEND_ORIGINS = "https://<url-vercel-kamu>"
+PUBLIC_APP_URL = "https://<url-vercel-final>"
+FRONTEND_ORIGINS = "https://<url-vercel-final>"
 ```
 
-Lalu deploy Worker ulang.
+Lalu deploy Worker ulang:
 
-## 7. Cek
+```bash
+npm run worker:deploy
+```
+
+## 3. Cek setelah Vercel live
 
 - Buka `https://<url-vercel>/admin/login`.
-- Password: lihat `ADMIN_PASSWORD` di `.deploy-secrets.local`.
+- Login dengan `ADMIN_PASSWORD` dari `.deploy-secrets.local`.
 - Buat sesi.
 - QR harus berisi URL Vercel.
-- Foto muncul setelah uploader mengirim.
+- Foto akan diambil dari Worker/R2.
 
-## 8. Uploader laptop
+## 4. Uploader laptop
 
 Salin `watcher/config.example.json` menjadi `watcher/config.json`:
 
 ```json
 {
-  "serverUrl": "https://lensa-api.<subdomain-akun>.workers.dev",
+  "serverUrl": "https://lensa-api.zaychik2006lya.workers.dev",
   "ingestToken": "INGEST_TOKEN_DARI_DEPLOY_SECRETS",
   "watchDir": "C:\\Users\\NamaKamu\\Pictures\\Tethering",
   "agentName": "Laptop Studio",
   "stabilitySeconds": 2
 }
 ```
+
+`INGEST_TOKEN` ada di `.deploy-secrets.local`.
 
 Jalankan:
 
@@ -156,17 +107,20 @@ atau `start-watcher.cmd`.
 
 ---
 
-## Tes lokal
+## Lokal
 
 ```bash
+npm run worker:migrate
 npm run dev
+```
+
+Frontend: `http://127.0.0.1:5173`
+Worker: `http://127.0.0.1:8787`
+
+Tes:
+
+```bash
 npm run test:e2e
 npm run test:live
 npm run test:visual
 ```
-
-Hasil terakhir:
-
-- E2E: 31/31 lulus
-- Live polling: 8/8 lulus
-- Visual: tidak ada error browser
