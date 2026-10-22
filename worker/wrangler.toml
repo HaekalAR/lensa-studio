@@ -1,0 +1,26 @@
+name = "lensa-api"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[vars]
+SITE_NAME = "Lensa"
+APP_TIMEZONE = "Asia/Jakarta"
+SESSION_DURATION_MINUTES = "15"
+PUBLIC_APP_URL = "https://lensa-studio.vercel.app"
+PUBLIC_API_URL = "https://lensa-api.namamu.workers.dev"
+FRONTEND_ORIGINS = "https://lensa-studio.vercel.app"
+R2_BUCKET_NAME = "expo-booth-ril"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lensa-db"
+database_id = "ceec3b04-32e4-469c-9d14-865655fa7180"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "expo-booth-ril"

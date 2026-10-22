@@ -1,0 +1,7 @@
+{
+  "serverUrl": "https://lensa-api.namamu.workers.dev",
+  "ingestToken": "GANTI_DENGAN_INGEST_TOKEN_DARI_WORKER",
+  "watchDir": "C:\\Users\\NamaKamu\\Pictures\\Tethering",
+  "agentName": "Laptop Studio",
+  "stabilitySeconds": 2
+}

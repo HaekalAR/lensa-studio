@@ -1,0 +1,45 @@
+{
+  "name": "lensa-studio",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Lensa — galeri foto per-sesi dengan QR, Vercel + Cloudflare Workers.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n worker,web -c green,cyan \"npm:worker:dev\" \"npm:dev:web\"",
+    "dev:web": "node scripts/vite-run.mjs --host 127.0.0.1",
+    "build": "node scripts/vite-run.mjs build",
+    "preview": "node scripts/vite-run.mjs preview --host 127.0.0.1 --port 5173",
+    "worker:dev": "node scripts/wrangler-run.mjs dev --config worker/wrangler.toml --port 8787 --persist-to worker/.wrangler/state --var PUBLIC_APP_URL:http://127.0.0.1:5173 --var PUBLIC_API_URL:http://127.0.0.1:8787 --var FRONTEND_ORIGINS:http://127.0.0.1:5173",
+    "worker:migrate": "node scripts/wrangler-run.mjs d1 migrations apply lensa-db --local --config worker/wrangler.toml --persist-to worker/.wrangler/state",
+    "worker:deploy": "node scripts/wrangler-run.mjs deploy --config worker/wrangler.toml",
+    "watcher": "node watcher/watcher.mjs",
+    "hash-password": "node scripts/hash-password-worker.mjs",
+    "secrets": "node scripts/generate-secrets.mjs",
+    "test:e2e": "node scripts/e2e-test.mjs",
+    "test:live": "node scripts/live-test.mjs",
+    "test:visual": "node scripts/visual-test.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.8",
+    "hono": "^4.13.13",
+    "lucide-react": "^1.61.0",
+    "qrcode.react": "^4.2.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.4",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "wrangler": "^4.152.0"
+  }
+}
