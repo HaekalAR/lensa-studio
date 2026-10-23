@@ -325,6 +325,46 @@ async function getPhotoByHash(c, sessionId, sha256) {
   );
 }
 
+function mapPrint(row) {
+  if (!row) return null;
+  let photoIds = [];
+  try {
+    photoIds = JSON.parse(row.photo_ids || '[]');
+  } catch {
+    photoIds = [];
+  }
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    storageKey: row.storage_key,
+    filename: row.filename,
+    mime: row.mime,
+    sizeBytes: Number(row.size_bytes),
+    width: row.width == null ? null : Number(row.width),
+    height: row.height == null ? null : Number(row.height),
+    photoIds: Array.isArray(photoIds) ? photoIds : [],
+    createdAt: row.created_at,
+  };
+}
+
+async function listPrints(c, sessionId) {
+  const rows = await all(
+    c,
+    `SELECT * FROM prints WHERE session_id = ? ORDER BY created_at DESC`,
+    sessionId,
+  );
+  return rows.map(mapPrint);
+}
+
+async function getPrint(c, id) {
+  return mapPrint(await first(c, `SELECT * FROM prints WHERE id = ?`, id));
+}
+
+async function countPrints(c, sessionId) {
+  const row = await first(c, `SELECT COUNT(*) AS count FROM prints WHERE session_id = ?`, sessionId);
+  return Number(row?.count || 0);
+}
+
 async function getStats(c) {
   const sessions = await first(c, `SELECT COUNT(*) AS count FROM sessions`);
   const photos = await first(c, `SELECT COUNT(*) AS count, COALESCE(SUM(size_bytes), 0) AS bytes FROM photos`);
@@ -434,6 +474,23 @@ function mediaUrl(c, token, photoId, variant, download = false) {
   return `${base}/${variant}${suffix}`;
 }
 
+function printUrl(c, token, printId, download = false) {
+  const base = `${apiBase(c)}/api/public/prints/${encodeURIComponent(token)}/${encodeURIComponent(printId)}`;
+  return download ? `${base}?download=1` : base;
+}
+
+function publicPrint(c, token, print) {
+  return {
+    id: print.id,
+    width: print.width,
+    height: print.height,
+    photoIds: print.photoIds,
+    createdAt: print.createdAt,
+    imageUrl: printUrl(c, token, print.id),
+    downloadUrl: printUrl(c, token, print.id, true),
+  };
+}
+
 function publicPhoto(c, token, photo) {
   return {
     id: photo.id,
@@ -448,7 +505,7 @@ function publicPhoto(c, token, photo) {
   };
 }
 
-function publicSessionPayload(c, session, photos = []) {
+function publicSessionPayload(c, session, photos = [], prints = []) {
   return {
     title: session.title,
     status: isLive(session) ? 'live' : 'ended',
@@ -457,6 +514,7 @@ function publicSessionPayload(c, session, photos = []) {
     endedAt: session.endedAt,
     photoCount: session.photoCount,
     photos: photos.map((photo) => publicPhoto(c, session.publicToken, photo)),
+    prints: prints.map((print) => publicPrint(c, session.publicToken, print)),
     serverNow: nowIso(),
     sessionUrl: `${appBase(c)}/s/${session.publicToken}`,
   };
@@ -470,7 +528,7 @@ function adminPhoto(c, token, photo) {
   };
 }
 
-function adminSessionPayload(c, session, photos) {
+function adminSessionPayload(c, session, photos, prints = []) {
   if (!session) return null;
   const list = photos ?? [];
   return {
@@ -491,6 +549,7 @@ function adminSessionPayload(c, session, photos) {
     publicToken: session.publicToken,
     publicUrl: `${appBase(c)}/s/${session.publicToken}`,
     photos: list.map((photo) => adminPhoto(c, session.publicToken, photo)),
+    prints: prints.map((print) => publicPrint(c, session.publicToken, print)),
     serverNow: nowIso(),
   };
 }
@@ -519,6 +578,10 @@ function photoKeys(sessionId, photoId, mime) {
   };
 }
 
+function printStorageKey(sessionId, printId, mime) {
+  return `sessions/${sessionId}/prints/${printId}.${extensionForMime(mime)}`;
+}
+
 /* ---------------------------------------------------------------- middleware */
 
 app.use('*', async (c, next) => {
@@ -530,7 +593,7 @@ app.use('*', async (c, next) => {
   }
   if (c.req.method === 'OPTIONS') {
     c.header('Access-Control-Allow-Methods', 'GET, HEAD, POST, PATCH, DELETE, OPTIONS');
-    c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Lensa-Agent, X-Lensa-Photo-Id, X-Lensa-Kind');
+    c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Lensa-Agent, X-Lensa-Photo-Id, X-Lensa-Kind, X-Lensa-Photo-Ids');
     c.header('Access-Control-Max-Age', '86400');
     return c.body(null, 204);
   }
@@ -627,9 +690,95 @@ app.get('/api/public/sessions/:token', async (c) => {
   const token = c.req.param('token');
   const session = await getSessionByToken(c, token);
   if (!session) return c.json({ error: 'not_found', message: 'Sesi tidak ditemukan.' }, 404);
-  const photos = await listPhotos(c, session.id);
+  const [photos, prints] = await Promise.all([
+    listPhotos(c, session.id),
+    listPrints(c, session.id),
+  ]);
   c.header('Cache-Control', 'no-store');
-  return c.json(publicSessionPayload(c, session, photos));
+  return c.json(publicSessionPayload(c, session, photos, prints));
+});
+
+app.post('/api/public/sessions/:token/prints', async (c) => {
+  await expireDue(c);
+  const token = c.req.param('token');
+  const session = await getSessionByToken(c, token);
+  if (!session) return c.json({ error: 'not_found', message: 'Sesi tidak ditemukan.' }, 404);
+
+  const mime = String(c.req.header('content-type') || '').split(';')[0].trim().toLowerCase();
+  if (!['image/jpeg', 'image/png'].includes(mime)) {
+    return c.json({ error: 'invalid_type', message: 'Hasil harus JPEG atau PNG.' }, 415);
+  }
+
+  const length = toInt(c.req.header('content-length'), 0);
+  const maxBytes = 10 * 1024 * 1024;
+  if (length > maxBytes) {
+    return c.json({ error: 'invalid_size', message: 'Ukuran hasil tidak valid.' }, 413);
+  }
+
+  if ((await countPrints(c, session.id)) >= 50) {
+    return c.json({ error: 'too_many_prints', message: 'Batas hasil cetak sesi ini tercapai.' }, 429);
+  }
+
+  const photoIds = String(c.req.header('x-lensa-photo-ids') || '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  if (photoIds.length === 0) {
+    return c.json({ error: 'invalid_photos', message: 'Pilih minimal satu foto.' }, 400);
+  }
+
+  const data = await c.req.arrayBuffer();
+  if (!data.byteLength || data.byteLength > maxBytes) {
+    return c.json({ error: 'invalid_size', message: 'Ukuran hasil tidak valid.' }, 413);
+  }
+  const bytes = new Uint8Array(data);
+  const isJpeg = mime === 'image/jpeg' && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const isPng =
+    mime === 'image/png' &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47;
+  if (!isJpeg && !isPng) {
+    return c.json({ error: 'invalid_image', message: 'File hasil bukan gambar valid.' }, 415);
+  }
+
+  const id = crypto.randomUUID();
+  const extension = mime === 'image/png' ? 'png' : 'jpg';
+  const key = printStorageKey(session.id, id, mime);
+  const filename = `lensa-${session.publicToken.slice(0, 6)}-${id.slice(0, 8)}.${extension}`;
+  await c.env.PHOTOS.put(key, data, {
+    httpMetadata: {
+      contentType: mime,
+      cacheControl: 'public, max-age=31536000, immutable',
+    },
+  });
+
+  try {
+    await run(
+      c,
+      `INSERT INTO prints
+        (id, session_id, storage_key, filename, mime, size_bytes, width, height, photo_ids, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id,
+      session.id,
+      key,
+      filename,
+      mime,
+      data.byteLength,
+      toInt(c.req.query('width'), 1386),
+      toInt(c.req.query('height'), 3024),
+      JSON.stringify(photoIds),
+      nowIso(),
+    );
+  } catch (error) {
+    await c.env.PHOTOS.delete(key).catch(() => undefined);
+    throw error;
+  }
+
+  const print = await getPrint(c, id);
+  return c.json({ ok: true, print: publicPrint(c, session.publicToken, print) }, 201);
 });
 
 app.on(['GET', 'HEAD'], '/api/public/media/:token/:photoId/:variant', async (c) => {
@@ -665,6 +814,36 @@ app.on(['GET', 'HEAD'], '/api/public/media/:token/:photoId/:variant', async (c) 
   }
 
   const object = await c.env.PHOTOS.get(key);
+  if (!object) return c.text('Not found', 404);
+  headers['Content-Length'] = String(object.size);
+  if (object.httpEtag) headers.ETag = object.httpEtag;
+  return new Response(object.body, { headers });
+});
+
+app.on(['GET', 'HEAD'], '/api/public/prints/:token/:printId', async (c) => {
+  const { token, printId } = c.req.param();
+  const session = await getSessionByToken(c, token);
+  if (!session) return c.text('Not found', 404);
+  const print = await getPrint(c, printId);
+  if (!print || print.sessionId !== session.id) return c.text('Not found', 404);
+
+  const headers = {
+    'Content-Type': print.mime,
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Disposition':
+      c.req.query('download') === '1' ? attachmentHeader(print.filename) : 'inline',
+    ...corsHeaders(c),
+  };
+
+  if (c.req.method === 'HEAD') {
+    const object = await c.env.PHOTOS.head(print.storageKey);
+    if (!object) return c.text('Not found', 404);
+    headers['Content-Length'] = String(object.size);
+    return new Response(null, { headers });
+  }
+
+  const object = await c.env.PHOTOS.get(print.storageKey);
   if (!object) return c.text('Not found', 404);
   headers['Content-Length'] = String(object.size);
   if (object.httpEtag) headers.ETag = object.httpEtag;
@@ -957,8 +1136,12 @@ app.get('/api/admin/sessions/:id', async (c) => {
   await expireDue(c);
   const session = await getSessionById(c, c.req.param('id'));
   if (!session) return c.json({ error: 'not_found', message: 'Sesi tidak ditemukan.' }, 404);
+  const [photos, prints] = await Promise.all([
+    listPhotos(c, session.id),
+    listPrints(c, session.id),
+  ]);
   return c.json({
-    session: adminSessionPayload(c, session, await listPhotos(c, session.id)),
+    session: adminSessionPayload(c, session, photos, prints),
     config: {
       siteName: c.env.SITE_NAME || 'Lensa',
       timezone: timezone(c),

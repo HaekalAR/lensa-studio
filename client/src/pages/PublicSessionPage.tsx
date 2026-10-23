@@ -3,11 +3,13 @@ import { createPortal } from 'react-dom';
 import {
   CalendarDays,
   Camera,
+  Check,
   ChevronLeft,
   ChevronRight,
   Clock,
   Download,
   Images,
+  Printer,
   ShieldCheck,
   X,
 } from 'lucide-react';
@@ -21,8 +23,9 @@ import {
 } from '../lib/format';
 import { useCountdown, usePageTitle } from '../lib/hooks';
 import { useSite } from '../context/AppProviders';
-import type { Photo, PublicSession } from '../types';
+import type { Photo, PublicSession, SessionPrint } from '../types';
 import { ErrorState, Logo, StatusPill } from '../components/ui';
+import { StripComposer } from '../components/StripComposer';
 
 function Lightbox({
   photos,
@@ -147,6 +150,9 @@ export function PublicSessionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ status: number; message: string } | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [composerOpen, setComposerOpen] = useState(false);
   const sessionRef = useRef<PublicSession | null>(null);
 
   const load = useCallback(async () => {
@@ -176,6 +182,9 @@ export function PublicSessionPage() {
     setSession(null);
     setError(null);
     setLightboxIndex(null);
+    setSelecting(false);
+    setSelectedIds([]);
+    setComposerOpen(false);
     setLoading(true);
     load();
   }, [load]);
@@ -208,8 +217,16 @@ export function PublicSessionPage() {
   );
 
   const photos = session?.photos || [];
+  const prints = session?.prints || [];
   const currentIndex = lightboxIndex !== null ? Math.min(lightboxIndex, photos.length - 1) : null;
   const isEmpty = !loading && !error && photos.length === 0;
+  const selectedPhotos = useMemo(
+    () =>
+      selectedIds
+        .map((id) => photos.find((photo) => photo.id === id))
+        .filter((photo): photo is Photo => Boolean(photo)),
+    [photos, selectedIds],
+  );
   const galleryNote = useMemo(() => {
     if (!session) return '';
     if (session.status === 'live') {
@@ -217,6 +234,31 @@ export function PublicSessionPage() {
     }
     return 'Sesi telah selesai. Semua foto tetap tersimpan dan bisa diunduh.';
   }, [session]);
+
+  const togglePhoto = (id: string) => {
+    setSelectedIds((current) => {
+      if (current.includes(id)) return current.filter((item) => item !== id);
+      if (current.length >= 3) return current;
+      return [...current, id];
+    });
+  };
+
+  const handlePrintSaved = (print: SessionPrint) => {
+    setSession((current) =>
+      current
+        ? {
+            ...current,
+            prints: [print, ...(current.prints || []).filter((item) => item.id !== print.id)],
+          }
+        : current,
+    );
+  };
+
+  const closeComposer = () => {
+    setComposerOpen(false);
+    setSelecting(false);
+    setSelectedIds([]);
+  };
 
   if (loading && !session) return <PublicSkeleton />;
 
@@ -242,7 +284,7 @@ export function PublicSessionPage() {
   if (!session) return <PublicSkeleton />;
 
   return (
-    <div className="public-page">
+    <div className={`public-page ${selecting ? 'public-page--selecting' : ''}`}>
       <header className="public-header">
         <Logo tone="light" />
         <div className="public-header__meta">
@@ -304,6 +346,35 @@ export function PublicSessionPage() {
           <span>{galleryNote}</span>
         </div>
 
+        {!isEmpty && (
+          <div className="strip-cta">
+            <div className="strip-cta__copy">
+              <span className="strip-cta__icon">
+                <Printer size={20} />
+              </span>
+              <div>
+                <strong>Strip photobooth</strong>
+                <p>Pilih maksimal 3 foto, lalu unduh hasilnya dalam frame Exposure Fest.</p>
+              </div>
+            </div>
+            {!selecting ? (
+              <button
+                type="button"
+                className="btn btn--dark btn--sm"
+                onClick={() => {
+                  setSelecting(true);
+                  setSelectedIds([]);
+                }}
+              >
+                <Images size={15} />
+                Pilih foto
+              </button>
+            ) : (
+              <span className="strip-cta__count">{selectedIds.length}/3 dipilih</span>
+            )}
+          </div>
+        )}
+
         {isEmpty ? (
           <div className="public-empty">
             <span className="public-empty__aperture">
@@ -329,35 +400,69 @@ export function PublicSessionPage() {
               <span>
                 {photos.length} foto · {session.status === 'live' ? 'terus diperbarui' : 'sesi selesai'}
               </span>
-              <span className="gallery-head__hint">Ketuk foto untuk memperbesar</span>
+              <span className="gallery-head__hint">
+                {selecting ? 'Pilih maksimal 3 foto' : 'Ketuk foto untuk memperbesar'}
+              </span>
             </div>
             <div
               className={`photo-grid ${
                 photos.length <= 2 || photos.length === 4 ? 'photo-grid--wide' : ''
               }`}
             >
-              {photos.map((photo, index) => (
-                <button
-                  type="button"
-                  className="photo-card"
-                  key={photo.id}
-                  onClick={() => setLightboxIndex(index)}
-                >
-                  <img
-                    src={photo.thumbUrl}
-                    alt={`Foto ${index + 1} — ${session.title}`}
-                    loading={index < 4 ? 'eager' : 'lazy'}
-                    decoding="async"
-                  />
-                  <span className="photo-card__scrim" />
-                  <span className="photo-card__number">{String(index + 1).padStart(2, '0')}</span>
-                  <span className="photo-card__action">
-                    <Download size={15} />
-                  </span>
-                </button>
-              ))}
+              {photos.map((photo, index) => {
+                const selectedPosition = selectedIds.indexOf(photo.id);
+                return (
+                  <button
+                    type="button"
+                    className={`photo-card ${selecting ? 'photo-card--selectable' : ''} ${
+                      selectedPosition >= 0 ? 'is-selected' : ''
+                    }`}
+                    key={photo.id}
+                    onClick={() => (selecting ? togglePhoto(photo.id) : setLightboxIndex(index))}
+                    aria-pressed={selecting ? selectedPosition >= 0 : undefined}
+                  >
+                    <img
+                      src={photo.thumbUrl}
+                      alt={`Foto ${index + 1} — ${session.title}`}
+                      loading={index < 4 ? 'eager' : 'lazy'}
+                      decoding="async"
+                    />
+                    <span className="photo-card__scrim" />
+                    <span className="photo-card__number">
+                      {selecting
+                        ? selectedPosition >= 0
+                          ? selectedPosition + 1
+                          : '+'
+                        : String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span className="photo-card__action">
+                      {selecting ? <Check size={15} /> : <Download size={15} />}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </>
+        )}
+
+        {prints.length > 0 && (
+          <section className="prints-section">
+            <div className="gallery-head">
+              <span>Strip photobooth · {prints.length}</span>
+              <span className="gallery-head__hint">Tersimpan di sesi ini</span>
+            </div>
+            <div className="print-grid">
+              {prints.map((print) => (
+                <a className="print-card" key={print.id} href={print.downloadUrl}>
+                  <img src={print.imageUrl} alt="Strip photobooth" loading="lazy" />
+                  <span>
+                    <Download size={15} />
+                    Unduh strip
+                  </span>
+                </a>
+              ))}
+            </div>
+          </section>
         )}
 
         {photos.length > 0 && (
@@ -377,12 +482,52 @@ export function PublicSessionPage() {
         <span className="public-footer__note">Simpan tautan ini untuk membuka galeri kembali.</span>
       </footer>
 
+      {selecting && (
+        <div className="selection-bar">
+          <div className="selection-bar__copy">
+            <strong>{selectedIds.length}/3</strong>
+            <span>foto dipilih</span>
+          </div>
+          <div className="selection-bar__actions">
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              onClick={() => {
+                setSelecting(false);
+                setSelectedIds([]);
+              }}
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              className="btn btn--dark btn--sm"
+              disabled={selectedIds.length === 0}
+              onClick={() => setComposerOpen(true)}
+            >
+              <Printer size={15} />
+              Buat strip
+            </button>
+          </div>
+        </div>
+      )}
+
       {currentIndex !== null && (
         <Lightbox
           photos={photos}
           index={currentIndex}
           onClose={() => setLightboxIndex(null)}
           onChange={setLightboxIndex}
+        />
+      )}
+
+      {composerOpen && selectedPhotos.length > 0 && (
+        <StripComposer
+          key={selectedIds.join('-')}
+          photos={selectedPhotos}
+          token={token}
+          onClose={closeComposer}
+          onSaved={handlePrintSaved}
         />
       )}
     </div>

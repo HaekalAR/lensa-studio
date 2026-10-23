@@ -9,67 +9,44 @@
 | R2 | `expo-booth-ril` |
 | D1 | `lensa-db` |
 
-Sudah diverifikasi:
+## Fitur strip photobooth
 
-- Login admin dari frontend Vercel berhasil.
-- CORS Vercel → Worker berhasil.
-- Buat sesi dan QR dari dashboard production berhasil.
-- QR berisi URL `https://lensa-studio-six.vercel.app/s/...`.
-- D1 remote sudah dimigrasikan.
-- R2 binding aktif; upload 1 foto production berhasil dan thumbnail `200`.
-- Data uji production sudah dihapus; D1 bersih (0 sesi, 0 foto).
-- E2E lokal 31/31, live 8/8, visual tanpa error.
+Sudah selesai dan diuji lokal:
 
-## Login admin
+- Pilih maksimal 3 foto dari galeri sesi.
+- Foto di-crop cover ke 3 slot frame Exposure Fest.
+- Sudut mengikuti frame rounded.
+- Preview hasil.
+- Download JPEG 1386×3024.
+- Hasil disimpan ke R2 dan tabel `prints` di D1.
+- Hasil muncul lagi saat halaman sesi dibuka ulang.
 
-Password ada di file lokal `.deploy-secrets.local`, baris `ADMIN_PASSWORD`.
+Backend production sudah membawa endpoint prints dan migrasi `0002_prints.sql`.
 
-Jangan commit atau kirim file itu.
+**Frontend production masih versi sebelum fitur strip.** Perlu push commit terbaru ke GitHub lalu redeploy Vercel.
 
 ## Uploader
 
-Sudah berjalan dan online:
+Sudah berjalan dengan:
 
 - Folder: `F:\!EXPOSURE BOOTH\Gallery`
-- Server: `https://lensa-api.zaychik2006lya.workers.dev`
-- Agen: `Exposure Booth`
-- Upload 1 foto production sudah diuji; thumbnail `200`.
-- Data uji sudah dihapus.
+- Server production Worker
+- Token production
+- Upload foto production sudah diuji
 
-Saat ini folder kosong dan belum ada sesi aktif, jadi uploader standby.
+Tanggal file tidak dipakai lagi untuk menerima/menolak foto. Duplikat dicegah lewat state file yang sudah pernah diunggah.
 
 ## Yang belum dilakukan
 
-1. **Buat sesi pertama** dari dashboard, lalu masukkan foto asli ke folder.
-2. **Auto-start uploader saat Windows menyala** belum dibuat; sekarang masih manual `npm run watcher` atau `start-watcher.cmd`.
-3. **Folder F: harus tetap terhubung**; kalau drive dilepas, uploader tidak bisa membaca foto.
-4. **Custom domain** untuk Vercel/Worker belum dipakai; masih memakai `vercel.app` dan `workers.dev`.
-5. **Backup/retensi R2** belum diatur; foto tersimpan sampai dihapus manual.
-6. **Push commit terbaru ke GitHub** kalau ingin source di GitHub sama dengan konfigurasi production saat ini.
+1. **Push commit terbaru ke GitHub dan redeploy Vercel** agar fitur strip muncul di production.
+2. **Auto-start uploader saat Windows menyala** belum dibuat.
+3. Folder F: harus tetap terhubung.
+4. Custom domain dan backup/retensi R2 belum diatur.
 
-## Cara pakai
+## Login admin
 
-1. Login admin di `https://lensa-studio-six.vercel.app/admin/login`.
-2. Klik **New Session**.
-3. Fotografer memindai QR atau membagikan tautannya.
-4. Uploader mengirim foto dari folder kamera ke sesi aktif.
-5. Tamu melihat foto di halaman `/s/<token>`.
-6. Sesi selesai otomatis setelah 15 menit; QR tetap membuka arsip.
+Password ada di `.deploy-secrets.local`, baris `ADMIN_PASSWORD`.
 
-## Lokal
+## Tes
 
-```bash
-npm run worker:migrate
-npm run dev
-```
-
-Frontend: `http://127.0.0.1:5173`
-Worker: `http://127.0.0.1:8787`
-
-Tes:
-
-```bash
-npm run test:e2e
-npm run test:live
-npm run test:visual
-```
+E2E: 32/32 lulus. Live polling: 8/8 lulus. Visual: tanpa error browser.

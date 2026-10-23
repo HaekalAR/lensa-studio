@@ -14,6 +14,7 @@ Website untuk fotografer: setiap sesi punya QR dan galeri sendiri. Foto dari fol
 - **QR tetap hidup setelah sesi selesai** — membuka galeri arsip, tidak menerima foto baru.
 - **Uploader folder lokal** — memantau folder kamera, membuat preview/thumbnail, mengunggah ke Worker + R2.
 - **Galeri live** — polling 3 detik; foto baru muncul tanpa reload.
+- **Strip photobooth** — pilih maksimal 3 foto, crop otomatis ke frame Exposure Fest, preview, unduh, dan hasil tersimpan di sesi.
 - **Unduh resolusi penuh**.
 - **Dashboard admin** — QR, hitung mundur, foto terbaru, uploader online/offline.
 - **Arsip sesi** — cari, detail, ubah judul/catatan, hapus foto.

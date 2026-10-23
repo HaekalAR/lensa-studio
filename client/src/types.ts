@@ -17,6 +17,16 @@ export interface AdminPhoto extends Photo {
   mime: string;
 }
 
+export interface SessionPrint {
+  id: string;
+  width: number | null;
+  height: number | null;
+  photoIds: string[];
+  createdAt: string;
+  imageUrl: string;
+  downloadUrl: string;
+}
+
 export interface PublicSession {
   title: string;
   status: SessionStatus;
@@ -25,6 +35,7 @@ export interface PublicSession {
   endedAt: string | null;
   photoCount: number;
   photos: Photo[];
+  prints: SessionPrint[];
   serverNow: string;
   sessionUrl: string;
 }
@@ -45,6 +56,7 @@ export interface AdminSession {
   publicToken: string;
   publicUrl: string;
   photos: AdminPhoto[];
+  prints: SessionPrint[];
   serverNow: string;
 }
 

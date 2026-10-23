@@ -4,6 +4,7 @@ import type {
   Overview,
   PublicSession,
   SessionListResponse,
+  SessionPrint,
   SiteConfig,
 } from '../types';
 
@@ -111,6 +112,23 @@ export const api = {
   getConfig: () => request<SiteConfig>('/api/config'),
   getPublicSession: (token: string) =>
     request<PublicSession>(`/api/public/sessions/${encodeURIComponent(token)}`),
+  savePrint: (token: string, image: Blob, photoIds: string[]) => {
+    const search = new URLSearchParams({
+      width: '1386',
+      height: '3024',
+    });
+    return request<{ ok: boolean; print: SessionPrint }>(
+      `/api/public/sessions/${encodeURIComponent(token)}/prints?${search.toString()}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': image.type || 'image/jpeg',
+          'X-Lensa-Photo-Ids': photoIds.join(','),
+        },
+        body: image,
+      },
+    );
+  },
 
   me: () => request<AuthMe>('/api/auth/me'),
   login: async (password: string) => {
