@@ -21,7 +21,11 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 async function loadPhoto(src: string): Promise<CanvasImageSource> {
-  const response = await fetch(src, { credentials: 'omit' });
+  const response = await fetch(src, {
+    credentials: 'omit',
+    mode: 'cors',
+    cache: 'reload',
+  });
   if (!response.ok) throw new Error('Gagal mengambil foto.');
   const blob = await response.blob();
   if ('createImageBitmap' in window) {

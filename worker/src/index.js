@@ -55,10 +55,11 @@ function allowedOrigins(c) {
 
 function corsHeaders(c) {
   const origin = c.req.header('origin') || '';
-  const headers = {};
+  // Selalu Vary: Origin agar cache gambar tanpa CORS tidak dipakai ulang
+  // oleh fetch() yang membutuhkan Access-Control-Allow-Origin.
+  const headers = { Vary: 'Origin' };
   if (origin && allowedOrigins(c).includes(origin)) {
     headers['Access-Control-Allow-Origin'] = origin;
-    headers.Vary = 'Origin';
     headers['Access-Control-Expose-Headers'] = 'Content-Disposition, Content-Length';
   }
   return headers;

@@ -12,6 +12,7 @@ import {
   ImageOff,
   Images,
   Pencil,
+  Printer,
   QrCode,
   Timer,
   Trash2,
@@ -20,6 +21,8 @@ import {
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { QrCodeSvg, downloadQrSvg } from '../components/QrCode';
+import { AdminStripPicker } from '../components/AdminStripPicker';
+import { StripComposer } from '../components/StripComposer';
 import {
   ConfirmDialog,
   CopyButton,
@@ -39,7 +42,7 @@ import {
 } from '../lib/format';
 import { useCountdown, usePageTitle } from '../lib/hooks';
 import { useSite } from '../context/AppProviders';
-import type { AdminPhoto, AdminSession } from '../types';
+import type { AdminPhoto, AdminSession, SessionPrint } from '../types';
 
 function DetailLightbox({
   photos,
@@ -151,6 +154,8 @@ export function SessionDetailPage() {
   const [deleteTarget, setDeleteTarget] = useState<AdminPhoto | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [stripPickerOpen, setStripPickerOpen] = useState(false);
+  const [stripPhotos, setStripPhotos] = useState<AdminPhoto[]>([]);
   const sessionRef = useRef<AdminSession | null>(null);
   const qrRef = useRef<SVGSVGElement>(null);
 
@@ -187,6 +192,8 @@ export function SessionDetailPage() {
     sessionRef.current = null;
     setSession(null);
     setLoading(true);
+    setStripPickerOpen(false);
+    setStripPhotos([]);
     load();
   }, [load]);
 
@@ -274,6 +281,18 @@ export function SessionDetailPage() {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleStripSaved = (print: SessionPrint) => {
+    setSession((current) =>
+      current
+        ? {
+            ...current,
+            prints: [print, ...(current.prints || []).filter((item) => item.id !== print.id)],
+          }
+        : current,
+    );
+    toast.success('Strip tersimpan di sesi ini.');
   };
 
   if (loading && !session) return <PageLoader label="Membuka folder sesi" />;
@@ -372,9 +391,21 @@ export function SessionDetailPage() {
               <p className="eyebrow">Galeri</p>
               <h2>{photos.length} foto di sesi ini</h2>
             </div>
-            {photos.length > 0 && (
-              <span className="section-head__meta">{formatBytes(totalBytes)} total</span>
-            )}
+            <div className="section-head__actions">
+              {photos.length > 0 && (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  onClick={() => setStripPickerOpen(true)}
+                >
+                  <Printer size={15} />
+                  Buat strip
+                </button>
+              )}
+              {photos.length > 0 && (
+                <span className="section-head__meta">{formatBytes(totalBytes)} total</span>
+              )}
+            </div>
           </div>
 
           {photos.length ? (
@@ -415,6 +446,28 @@ export function SessionDetailPage() {
                   ? 'Foto akan muncul di sini begitu uploader mengirimkannya dari folder kamera.'
                   : 'Sesi ini selesai tanpa foto yang tersimpan.'}
               </p>
+            </div>
+          )}
+
+          {(session.prints || []).length > 0 && (
+            <div className="admin-prints">
+              <div className="section-head section-head--tight">
+                <div>
+                  <p className="eyebrow">Strip photobooth</p>
+                  <h2>{session.prints.length} hasil tersimpan</h2>
+                </div>
+              </div>
+              <div className="print-grid admin-print-grid">
+                {session.prints.map((print) => (
+                  <a className="print-card" key={print.id} href={print.downloadUrl}>
+                    <img src={print.imageUrl} alt="Strip photobooth" loading="lazy" />
+                    <span>
+                      <Download size={15} />
+                      Unduh strip
+                    </span>
+                  </a>
+                ))}
+              </div>
             </div>
           )}
         </section>
@@ -566,6 +619,25 @@ export function SessionDetailPage() {
         onConfirm={deletePhoto}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      <AdminStripPicker
+        open={stripPickerOpen}
+        photos={photos}
+        onClose={() => setStripPickerOpen(false)}
+        onConfirm={(chosen) => {
+          setStripPickerOpen(false);
+          setStripPhotos(chosen);
+        }}
+      />
+
+      {stripPhotos.length > 0 && (
+        <StripComposer
+          photos={stripPhotos}
+          token={session.publicToken}
+          onClose={() => setStripPhotos([])}
+          onSaved={handleStripSaved}
+        />
+      )}
 
       {currentIndex !== null && (
         <DetailLightbox
