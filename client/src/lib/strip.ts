@@ -78,11 +78,18 @@ export async function composeStrip(photos: Photo[]): Promise<Blob> {
     ctx.fillRect(slot.x, slot.y, slot.width, slot.height);
     const image = images[index];
     if (!image) return;
+    // Overscan sedikit agar garis putih tipis di tepi lubang frame tertutup.
+    // Frame digambar setelahnya, jadi bagian yang keluar slot tetap ter-mask.
+    const overscan = 5;
+    const x = slot.x - overscan;
+    const y = slot.y - overscan;
+    const width = slot.width + overscan * 2;
+    const height = slot.height + overscan * 2;
     ctx.save();
     ctx.beginPath();
-    ctx.rect(slot.x, slot.y, slot.width, slot.height);
+    ctx.rect(x, y, width, height);
     ctx.clip();
-    drawCover(ctx, image, slot.x, slot.y, slot.width, slot.height);
+    drawCover(ctx, image, x, y, width, height);
     ctx.restore();
   });
 
