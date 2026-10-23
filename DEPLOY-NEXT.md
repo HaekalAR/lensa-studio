@@ -11,7 +11,7 @@
 
 ## Fitur strip photobooth
 
-Sudah selesai dan diuji lokal:
+Sudah live dan diuji di production:
 
 - Pilih maksimal 3 foto dari galeri sesi.
 - Foto di-crop cover ke 3 slot frame Exposure Fest.
@@ -21,9 +21,9 @@ Sudah selesai dan diuji lokal:
 - Hasil disimpan ke R2 dan tabel `prints` di D1.
 - Hasil muncul lagi saat halaman sesi dibuka ulang.
 
-Backend production sudah membawa endpoint prints dan migrasi `0002_prints.sql`.
+Backend production sudah membawa endpoint prints dan migrasi `0002_prints.sql`. Frontend Vercel sudah ter-redeploy dari commit fitur strip.
 
-**Frontend production masih versi sebelum fitur strip.** Perlu push commit terbaru ke GitHub lalu redeploy Vercel.
+Data print uji production sudah dihapus; tabel `prints` kosong.
 
 ## Uploader
 
@@ -38,10 +38,9 @@ Tanggal file tidak dipakai lagi untuk menerima/menolak foto. Duplikat dicegah le
 
 ## Yang belum dilakukan
 
-1. **Push commit terbaru ke GitHub dan redeploy Vercel** agar fitur strip muncul di production.
-2. **Auto-start uploader saat Windows menyala** belum dibuat.
-3. Folder F: harus tetap terhubung.
-4. Custom domain dan backup/retensi R2 belum diatur.
+1. **Auto-start uploader saat Windows menyala** belum dibuat.
+2. Folder F: harus tetap terhubung.
+3. Custom domain dan backup/retensi R2 belum diatur.
 
 ## Login admin
 
